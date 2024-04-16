@@ -1,6 +1,12 @@
 import os
 import datetime
 
+exp_4_nodes = ["worker-c23","worker-c24","worker-c25","worker-c26"]
+
+exp_8_nodes = ["worker-c23","worker-c24","worker-c25","worker-c26","worker-c27","worker-c28","worker-c29","worker-c30"]
+
+exp_16_nodes = ["worker-c23","worker-c24","worker-c25","worker-c26","worker-c27","worker-c28","worker-c29","worker-c30","worker-c34","worker-c35","worker-c36","worker-c37","worker-c38","worker-c39","worker-c40","worker-c41"]
+
 logname = "rnasplice_execution.log"
 
 def run_tc_config(bandwidth):

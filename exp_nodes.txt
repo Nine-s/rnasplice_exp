@@ -1,0 +1,32 @@
+kubectl label nodes hu-worker-c23 exp4nodes=ninon
+kubectl label nodes hu-worker-c24 exp4nodes=ninon
+kubectl label nodes hu-worker-c25 exp4nodes=ninon
+kubectl label nodes hu-worker-c26 exp4nodes=ninon
+
+
+kubectl label nodes hu-worker-c23 exp8nodes=ninon
+kubectl label nodes hu-worker-c24 exp8nodes=ninon
+kubectl label nodes hu-worker-c25 exp8nodes=ninon
+kubectl label nodes hu-worker-c26 exp8nodes=ninon
+kubectl label nodes hu-worker-c27 exp8nodes=ninon
+kubectl label nodes hu-worker-c28 exp8nodes=ninon
+kubectl label nodes hu-worker-c29 exp8nodes=ninon
+kubectl label nodes hu-worker-c30 exp8nodes=ninon
+
+
+kubectl label nodes hu-worker-c23 exp16nodes=ninon
+kubectl label nodes hu-worker-c24 exp16nodes=ninon
+kubectl label nodes hu-worker-c25 exp16nodes=ninon
+kubectl label nodes hu-worker-c26 exp16nodes=ninon
+kubectl label nodes hu-worker-c27 exp16nodes=ninon
+kubectl label nodes hu-worker-c28 exp16nodes=ninon
+kubectl label nodes hu-worker-c29 exp16nodes=ninon
+kubectl label nodes hu-worker-c30 exp16nodes=ninon
+kubectl label nodes hu-worker-c34 exp16nodes=ninon
+kubectl label nodes hu-worker-c35 exp16nodes=ninon
+kubectl label nodes hu-worker-c36 exp16nodes=ninon
+kubectl label nodes hu-worker-c37 exp16nodes=ninon
+kubectl label nodes hu-worker-c38 exp16nodes=ninon
+kubectl label nodes hu-worker-c39 exp16nodes=ninon
+kubectl label nodes hu-worker-c40 exp16nodes=ninon
+kubectl label nodes hu-worker-c41 exp16nodes=ninon
