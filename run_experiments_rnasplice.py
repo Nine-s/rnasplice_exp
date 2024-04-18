@@ -6,9 +6,9 @@ from kubernetes import client, config, stream
 from kubernetes.stream import stream
 
 # K8S config
-path_to_work_folder = "/data/ninon/rnasplice_experiments_traces/"
-path_to_trace_files = "/data/ninon/"
-path_to_trace_folders = ""
+path_to_work_folder = "/data/ninon/" #TODO : add "/workspace" ??
+path_to_trace_files = "/data/ninon/" #TODO : add "/workspace" ??
+path_to_trace_folders = "/data/ninon/rnasplice_experiments_traces/"
 path_to_nextflow = "nextflow"
 name_of_volume = "nextflow-ninon"  
 namespace = "default"  
@@ -16,7 +16,7 @@ helper_pod = "ubuntu-pod"
 helper_container = "ubuntu-pod"
 
 # Load the Kubernetes configuration
-config.load_kube_config('/home/ninon/.kube/config')
+config.load_kube_config('/home/ninon/.kube/config') #TODO: do we need this?
 
 # Create an API client
 api = client.CoreV1Api()
@@ -37,11 +37,13 @@ def execute_command_in_container(input_command):
         print(f"An error occurred while executing the command: {e}")
 
 
-def run_tc_config(bandwidth, list_of_nodes):
+def run_tc_config(bandwidth, list_of_nodes): # TODO
     if (bandwidth is not None):
         my_command = "start_tc_config_command" + str(bandwidth) + "end_tc_config_command"
-        runCommand(my_command) #TODO : vasilis: take care of the command
-        check_bandwidth(bandwidth) #???
+        #runCommand(my_command) #TODO : vasilis: take care of the command
+        #check_bandwidth(bandwidth) #???
+    else:
+        return
 
 def run_one_experiment(command):
     current_datetime = datetime.datetime.now()
@@ -121,8 +123,13 @@ logname = "rnasplice_execution.log"
 path_to_config_files = "/data/ninon/rnasplice_experiments_configs/" 
 
 # EXP PARAMETERS
-bandwidths = [None, 1, 2, 10] #in Mb # TODO
-nodes = [4, 8, 16]
+#bandwidths = [None, 1, 2, 10] #in Mb # TODO
+#nodes = [4, 8, 16] # TODO
+#replicates_number = 2 # TODO
+
+bandwidths = [None] # temporary for testing
+nodes = [4, 8] # temporary for testing
+replicates_number = 1
 
 command_4_nodes = "nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 4_nodes -c " + path_to_config_files + "exp_4_nodes.config"
 command_8_nodes = "nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 8_nodes -c " + path_to_config_files + "exp_8_nodes.config"
@@ -138,6 +145,7 @@ command_16_nodes_split_8 = "nextflow kuberun Nine-s/rnasplice_generated_modified
 command_8_nodes_split_2 = "nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 8_nodes -c " + path_to_config_files + "exp_8_nodes_split_2.config"
 command_16_nodes_split_2 = "nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_2.config"
 
+
 ### RUN THE EXPERIMENTS
 
 create_log_file()
@@ -146,14 +154,14 @@ for i in range(len(bandwidths)):
     run_tc_config(bandwidths[i], list_of_nodes=exp_16_nodes_addresses)
     for j in range(len(nodes)):
         # run rewriten daw
-        for replicate in range(2):
+        for replicate in range(replicates_number):
             start_time, end_time = run_one_experiment(daws_rewritten_commandline[j])
             move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+1))
             add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+1))
             remove_work_folder()
 
         # run baseline daw
-        for replicate in range(2):
+        for replicate in range(replicates_number):
             start_time, end_time = run_one_experiment(daws_baseline_commandline[j])
             move_trace_files(bandwidths[i], nodes[j], "baseline", replicate+1)
             add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "baseline", str(replicate+1))
@@ -161,14 +169,14 @@ for i in range(len(bandwidths)):
 
         # run split 2 for 8 nodes
         if(j == 2):
-            for replicate in range(2):
+            for replicate in range(replicates_number):
                 start_time, end_time = run_one_experiment(command_16_nodes_split_8)
 
                 move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+1))
                 add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+1))
                 remove_work_folder()
 
-            for replicate in range(2):
+            for replicate in range(replicates_number):
                 start_time, end_time = run_one_experiment(command_16_nodes_split_2)
 
                 move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+1))
