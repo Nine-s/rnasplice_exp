@@ -99,6 +99,11 @@ def check_if_daw_is_done():
     return True
 
 def move_trace_files(bandwidth, nodes, daw_type, replicate):
+    subprocess.run("mkdir -p " + path_to_trace_folders)
+    subprocess.run("mkdir -p " + path_to_trace_folders + bandwidth)
+    subprocess.run("mkdir -p " + path_to_trace_folders + bandwidth + "/" + nodes) 
+    subprocess.run("mkdir -p " + path_to_trace_folders + bandwidth + "/" + nodes + "/" + daw_type)
+    subprocess.run("mkdir -p " + path_to_trace_folders + bandwidth + "/" + nodes + "/" + daw_type + "/" + replicate ) 
     path_to_right_trace_folder = path_to_trace_folders + "/" + bandwidth  + "/" + nodes  + "/" + daw_type  + "/" + replicate  + "/" 
     subprocess.run("mv " + path_to_trace_files + "/_* " + path_to_right_trace_folder) 
 
