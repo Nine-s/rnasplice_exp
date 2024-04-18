@@ -37,10 +37,10 @@ def execute_command_in_container(input_command):
         print(f"An error occurred while executing the command: {e}")
 
 
-def run_tc_config(bandwidth):
+def run_tc_config(bandwidth, list_of_nodes): #TODO ninon: add list of nodes
     if (bandwidth is not None):
         my_command = "start_tc_config_command" + str(bandwidth) + "end_tc_config_command"
-        runCommand(my_command) #TODO
+        runCommand(my_command) #TODO : vasilis: take care of the command
         check_bandwidth(bandwidth) #???
 
 def run_one_experiment(command):

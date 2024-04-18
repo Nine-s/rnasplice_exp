@@ -1,0 +1,22 @@
+Apr-17 14:39:48.324 [main] DEBUG nextflow.cli.Launcher - $> nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 8_nodes -c test.config
+Apr-17 14:39:48.591 [main] DEBUG nextflow.plugin.PluginsFacade - Setting up plugin manager > mode=prod; embedded=false; plugins-dir=/home/ninon/.nextflow/plugins; core-plugins: nf-amazon@2.4.2,nf-azure@1.6.0,nf-cloudcache@0.4.1,nf-codecommit@0.2.0,nf-console@1.1.1,nf-ga4gh@1.2.0,nf-google@1.12.0,nf-tower@1.9.0,nf-wave@1.4.0
+Apr-17 14:39:48.607 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Enabled plugins: []
+Apr-17 14:39:48.608 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Disabled plugins: []
+Apr-17 14:39:48.613 [main] INFO  org.pf4j.DefaultPluginManager - PF4J version 3.10.0 in 'deployment' mode
+Apr-17 14:39:48.633 [main] INFO  org.pf4j.AbstractPluginManager - No plugins
+Apr-17 14:39:48.651 [main] DEBUG nextflow.scm.ProviderConfig - Using SCM config path: /home/ninon/.nextflow/scm
+Apr-17 14:39:48.693 [main] DEBUG nextflow.scm.RepositoryFactory - Found Git repository result: [RepositoryFactory]
+Apr-17 14:39:48.710 [main] DEBUG nextflow.scm.RepositoryProvider - Request [credentials -:-] -> https://api.github.com/repos/Nine-s/rnasplice_generated_modified_reduced_/contents/nextflow.config
+Apr-17 14:39:49.405 [main] DEBUG nextflow.config.ConfigBuilder - User config file: https://github.com/Nine-s/rnasplice_generated_modified_reduced_/nextflow.config
+Apr-17 14:39:49.407 [main] DEBUG nextflow.config.ConfigBuilder - User config file: /home/ninon/description_prototype/rnasplice_exp/test.config
+Apr-17 14:39:49.413 [main] DEBUG nextflow.config.ConfigBuilder - Parsing config file: https://github.com/Nine-s/rnasplice_generated_modified_reduced_/nextflow.config
+Apr-17 14:39:49.415 [main] DEBUG nextflow.config.ConfigBuilder - Parsing config file: /home/ninon/description_prototype/rnasplice_exp/test.config
+Apr-17 14:39:49.449 [main] DEBUG n.secret.LocalSecretsProvider - Secrets store: /home/ninon/.nextflow/secrets/store.json
+Apr-17 14:39:49.453 [main] DEBUG nextflow.secret.SecretsLoader - Discovered secrets providers: [nextflow.secret.LocalSecretsProvider@64a9d48c] - activable => nextflow.secret.LocalSecretsProvider@64a9d48c
+Apr-17 14:39:49.460 [main] DEBUG nextflow.config.ConfigBuilder - Applying config profile: `standard`
+Apr-17 14:39:50.371 [main] DEBUG nextflow.config.ConfigBuilder - Applying config profile: `standard`
+Apr-17 14:39:50.599 [main] DEBUG nextflow.k8s.K8sConfig - Kubernetes workDir=/workspace/ninon/work; projectDir=/workspace/projects; volumeClaims=[nextflow-ninon]
+Apr-17 14:39:50.775 [main] DEBUG nextflow.scm.ProviderConfig - Using SCM config path: /home/ninon/.nextflow/scm
+Apr-17 14:39:50.898 [main] DEBUG nextflow.k8s.K8sDriverLauncher - Created K8s configMap with name: nf-config-4c7f006b
+Apr-17 14:39:51.000 [main] INFO  nextflow.k8s.K8sDriverLauncher - Launcher pod spec file: .nextflow.pod.yaml
+Apr-17 14:40:18.654 [main] DEBUG nextflow.k8s.K8sDriverLauncher - Wait for pod termination name=clever-shirley
