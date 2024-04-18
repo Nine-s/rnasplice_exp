@@ -13,10 +13,10 @@ def find_prometheus_pod(namespace):
 
     pod_names = result.stdout.split()
     for pod_name in pod_names:
-        if "prometheus-server" in pod_name:
+        if "prometheus-prometheus-kube-prometheus-prometheus-0" in pod_name:
             return pod_name
 
-    raise Exception("No Prometheus pod found with 'prometheus-server' in its name.")
+    raise Exception("No Prometheus pod found with 'prometheus-kube' in its name.")
 
 def start_port_forwarding(namespace, pod_name, local_port, remote_port):
     command = [
@@ -43,6 +43,8 @@ def query_prometheus(prometheus_url, query, start, end, step):
     if response.status_code == 200:
         return response.json()
     else:
+        # Show query in case of error
+        print(f"Query: {query}")
         raise Exception(f"Failed to query Prometheus: {response.status_code} - {response.text}")
 
 def parse_timeseries(data):
@@ -55,39 +57,91 @@ def parse_timeseries(data):
             values.append(float(value[1]))
     return timestamps, values
 
-def plot_data(timestamps, values):
+def plot_data(timestamps, values, title='', xlabel='', ylabel=''):
     plt.figure(figsize=(10, 6))
     plt.plot(timestamps, values, marker='o')
-    plt.title('CPU Usage Over Time')
-    plt.xlabel('Time')
-    plt.ylabel('CPU Usage')
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
     plt.grid(True)
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.show()
 
-def main():
-    namespace = "monitoring"
-    prometheus_pod = find_prometheus_pod(namespace)
-    local_port = 9090
-    remote_port = 9090
-    query = '1 - avg(rate(node_cpu_seconds_total{instance="10.0.0.29:9100", mode="idle"}[1h]))'
-    now = datetime.datetime.now()
-    start_time = now - datetime.timedelta(hours=1)
-    end_time = now
-    step = '60'  # step size in seconds
+    # Save the plot
+    plt.savefig(f"{title.replace(' ', '_')}.png")
 
-    process = start_port_forwarding(namespace, prometheus_pod, local_port, remote_port)
-    try:
-        data = query_prometheus(f"http://localhost:{local_port}", query, start_time, end_time, step)
-        timestamps, values = parse_timeseries(data)
-        plot_data(timestamps, values)
-    finally:
-        process.terminate()
-        process.wait()
-        print("Port forwarding stopped.")
+
+KUBERNETES_QUERIES = {
+    'non_idle_cpu_time': '1 - avg(rate(node_cpu_seconds_total{instance={{node}}, mode="idle"}[{{max_time}}m]))',
+    'used_ram': '(node_memory_MemTotal_bytes{instance={{node}}} - node_memory_MemAvailable_bytes{instance={{node}}})',
+    'used_disk_space': '(node_filesystem_size_bytes{instance={{node}}, mountpoint="/var"} - node_filesystem_free_bytes{instance={{node}}, mountpoint="/var"})', #TODO check if it works when the query range is given externally
+    'used_pvc_space': 'kubelet_volume_stats_used_bytes{persistentvolumeclaim="ninon-nextflow"}', # This fetches multiple graphs, need to get only one
+    'total_bytes_transmitted_regular_network': 'rate(node_network_transmit_bytes_total{instance={{node}}, device="eno1np0"}[{{max_time}}h])',
+    'total_bytes_received_regular_network': 'rate(node_network_receive_bytes_total{instance={{node}}, device="eno1np0"}[{{max_time}}h])',
+    'total_bytes_transmitted_ceph_network': 'rate(node_network_transmit_bytes_total{instance={{node}}, device="eno2np1"}[{{max_time}}h])',
+    'total_bytes_received_ceph_network': 'rate(node_network_receive_bytes_total{instance={{node}}, device="eno2np1"})[{{max_time}}h])',
+}
+
+CEPH_QUERIES = {"cluster_total_bytes_written": "sum(irate(ceph_osd_op_w_in_bytes[1m]))",
+                "cluster_total_bytes_read": 'sum(irate(ceph_osd_op_r_in_bytes[1m]))',
+                "cluster_total_ops_written": "sum(irate(ceph_osd_op_w[1m]))",
+                "cluster_total_ops_read": "sum(irate(ceph_osd_op_r[1m]))",
+                }
+
+
+LIST_OF_NODES = ["10.0.0.24:9100", "10.0.0.38:9100"]
+
+def generate_kubernetes_queries(max_time_to_query):
+    list_of_queries = []
+    for query_name, query_template in KUBERNETES_QUERIES.items():
+        for node in LIST_OF_NODES:
+            query = query_template.replace('{{node}}', f'"{node}"').replace('{{max_time}}', str(max_time_to_query))
+            list_of_queries.append(query)
+
+    return list_of_queries
+
+def generate_ceph_queries(max_time_to_query):
+    list_of_queries = []
+    for query_name, query_template in CEPH_QUERIES.items():
+        query = query_template.replace('{{max_time}}', str(max_time_to_query))
+        list_of_queries.append(query)
+
+    return list_of_queries
 
 if __name__ == "__main__":
-    main()
+    kubernetes_queries_list = generate_kubernetes_queries(1)
+    for query in kubernetes_queries_list:
+        print(query)
 
+    for query in generate_ceph_queries(1):
+        print(query)
 
+    namespace = "monitoring"
+    prometheus_pod = find_prometheus_pod(namespace)
+    port_forwarding_process = start_port_forwarding(namespace, prometheus_pod, 9090, 9090)
+    prometheus_url = "http://localhost:9090"
+
+    example_query = kubernetes_queries_list[0]
+
+    # Query Prometheus
+    start = datetime.datetime.now() - datetime.timedelta(hours=1)
+    end = datetime.datetime.now()
+    step = 30
+    data = query_prometheus(prometheus_url, query, start, end, step)
+
+    for title, query in KUBERNETES_QUERIES.items():
+        for node in LIST_OF_NODES:
+            filled_query = query.replace('{{node}}', f'"{node}"').replace('{{max_time}}', '1')
+            print(f"Querying {title} for node {node}. The query is: {filled_query}")
+            data = query_prometheus(prometheus_url, filled_query, start, end, step)
+            timestamps, values = parse_timeseries(data)
+            # TODO: Plot the data but don't block the script
+
+            plot_data(timestamps, values, title=f"{title} for node {node}", xlabel="Time", ylabel=title)
+    
+    # Stop port forwarding
+    port_forwarding_process.terminate()
+    port_forwarding_process.wait()
+    print("Port forwarding stopped.")
+    
+    exit(0)
