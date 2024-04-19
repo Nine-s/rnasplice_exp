@@ -94,6 +94,15 @@ def run_tc_config(bandwidth):
      'hu-worker-c29', 'hu-worker-c30', 'hu-worker-c31', 'hu-worker-c32', 'hu-worker-c33',
      'hu-worker-c34', 'hu-worker-c35', 'hu-worker-c36', 'hu-worker-c37', 'hu-worker-c38',
      'hu-worker-c39', 'hu-worker-c40', 'hu-worker-c41', 'hu-worker-c42', 'hu-worker-c43']
+    inventory_path = '/home/rnaseq/rnasplice_exp/hosts'
+    module = 'command'
+
+    # Create an inventory file
+    with open(inventory_path, 'w') as file:
+        file.write('[all_nodes]\n')
+        for node in list_of_nodes:
+            file.write(f"{node}\n")
+
 
     if not bandwidth:    
         args = 'tcdel eno2np1 --all'
@@ -112,15 +121,6 @@ def run_tc_config(bandwidth):
         return
 
     if (bandwidth is not None):
-        inventory_path = '/home/rnaseq/rnasplice_exp/hosts'
-        module = 'command'
-
-        # Create an inventory file
-        with open(inventory_path, 'w') as file:
-            file.write('[all_nodes]\n')
-            for node in list_of_nodes:
-                file.write(f"{node}\n")
-
         args = 'tcdel eno2np1 --all'
         print(args)
         try:
