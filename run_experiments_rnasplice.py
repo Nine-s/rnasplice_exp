@@ -5,18 +5,21 @@ import subprocess
 from kubernetes import client, config, stream
 from kubernetes.stream import stream
 
-# K8S config
-path_to_work_folder = "/home/rnaseq/" #TODO : add "/workspace" ??
-path_to_trace_files = "/home/rnaseq/" #TODO : add "/workspace" ??
+# PVC paths
+my_pvc_path = "/data/rnaseq/"
+path_to_work_folder = "/data/rnaseq/" 
+path_to_trace_files = "/data/rnaseq/" 
 path_to_trace_folders = "/home/rnaseq/rnasplice_experiments_traces/"
+
+# K8S config
 path_to_nextflow = "/home/rnaseq/nextflow"
 name_of_volume = "nextflow-ninon"  
-namespace = "default"  
+namespace = "default"
 helper_pod = "ubuntu-pod"
 helper_container = "ubuntu-pod"
 
 # Load the Kubernetes configuration
-config.load_kube_config('/home/rnaseq/kubeconfig') #TODO: do we need this?
+config.load_kube_config('/home/rnaseq/kubeconfig')
 
 # Create an API client
 api = client.CoreV1Api()
@@ -25,6 +28,53 @@ def check_pod_status(pod_name):
     pod = api.read_namespaced_pod_status(pod_name, namespace)
     return pod.status.phase
 
+def move_files_in_pod(namespace, pod_name, src, dest):
+
+    # Command to be executed in the pod
+    cmd = ['sh', '-c', f'mv {src} {dest}']
+
+    try:
+        # Connecting to the pod and executing the command
+        resp = stream(api.connect_get_namespaced_pod_exec, pod_name, namespace,
+                      command=cmd, stderr=True, stdin=False,
+                      stdout=True, tty=False)
+        print("Files moved successfully:")
+        print(resp)
+    except Exception as e:
+        print("Failed to move files:")
+        print(str(e))
+
+def delete_work_folder_in_pod(namespace, pod_name, path_to_work_folder):
+
+    # Command to be executed in the pod
+    cmd = ['sh', '-c', f'rm -r {path_to_work_folder}work']
+
+    try:
+        # Connecting to the pod and executing the command
+        resp = stream(api.connect_get_namespaced_pod_exec, pod_name, namespace,
+                      command=cmd, stderr=True, stdin=False,
+                      stdout=True, tty=False)
+        print("Files moved successfully:")
+        print(resp)
+    except Exception as e:
+        print("Failed to move files:")
+        print(str(e))
+
+def create_folder_in_pod(namespace, pod_name, path, dirname):
+
+    # Command to be executed in the pod
+    cmd = ['sh', '-c', f'mkdir -p {path}{dirname}']
+
+    try:
+        # Connecting to the pod and executing the command
+        resp = stream(api.connect_get_namespaced_pod_exec, pod_name, namespace,
+                      command=cmd, stderr=True, stdin=False,
+                      stdout=True, tty=False)
+        print("Files moved successfully:")
+        print(resp)
+    except Exception as e:
+        print("Failed to move files:")
+        print(str(e))
 
 def execute_command_in_container(input_command):
     try:
@@ -100,17 +150,12 @@ def check_if_daw_is_done():
     return True
 
 def move_trace_files(bandwidth, nodes, daw_type, replicate):
-    subprocess.run("mkdir -p " + path_to_trace_folders)
-    subprocess.run("mkdir -p " + path_to_trace_folders + bandwidth)
-    subprocess.run("mkdir -p " + path_to_trace_folders + bandwidth + "/" + nodes) 
-    subprocess.run("mkdir -p " + path_to_trace_folders + bandwidth + "/" + nodes + "/" + daw_type)
-    subprocess.run("mkdir -p " + path_to_trace_folders + bandwidth + "/" + nodes + "/" + daw_type + "/" + replicate ) 
-    path_to_right_trace_folder = path_to_trace_folders + "/" + bandwidth  + "/" + nodes  + "/" + daw_type  + "/" + replicate  + "/" 
-    subprocess.run("mv " + path_to_trace_files + "/_* " + path_to_right_trace_folder) 
+    path_to_right_trace_folder = path_to_trace_folders + "rnasplice_exp_traces" + "/" + bandwidth  + "/" + nodes  + "/" + daw_type  + "/" + replicate  + "/" 
+    create_folder_in_pod(namespace, helper_pod, "" , path_to_right_trace_folder)
+    move_files_in_pod(namespace, helper_pod, path_to_trace_files + "_*", path_to_right_trace_folder)
 
 def remove_work_folder(): 
-    subprocess.run("rm -r " + path_to_work_folder + "work")
-
+    delete_work_folder_in_pod(namespace, helper_pod, path_to_work_folder)
 
 ### START
 
@@ -147,10 +192,13 @@ command_baseline_16_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_work
 daws_baseline_commandline = [command_baseline_4_nodes, command_baseline_8_nodes, command_baseline_16_nodes]
 
 #TOFIX
-command_16_nodes_split_8 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_8.config"
-command_8_nodes_split_2 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 8_nodes -c " + path_to_config_files + "exp_8_nodes_split_2.config"
+#command_8_nodes_split_2 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 8_nodes -c " + path_to_config_files + "exp_8_nodes_split_2.config"
 command_16_nodes_split_2 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_2.config"
 command_16_nodes_split_4 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_4.config"
+command_16_nodes_split_8 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_8.config"
+
+
+
 
 ### RUN THE EXPERIMENTS
 
@@ -173,7 +221,7 @@ for i in range(len(bandwidths)):
             add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "baseline", str(replicate+1))
             remove_work_folder()
 
-        # # run split 2 for 8 nodes
+        # # run different splits for 16 nodes
         # if(j == 2):
         #     for replicate in range(replicates_number):
         #         start_time, end_time = run_one_experiment(command_16_nodes_split_8)
