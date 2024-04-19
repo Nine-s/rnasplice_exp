@@ -3,3 +3,6 @@
 
 # Ignore other logs
 *.log
+
+# Ignore images generated on root folder
+*.png
