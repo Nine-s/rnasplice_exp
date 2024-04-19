@@ -247,8 +247,8 @@ path_to_config_files = "/home/rnaseq/rnasplice_exp/"
 #nodes = [4, 8, 16] # TODO
 #replicates_number = 2 # TODO
 
-bandwidths = [None] # temporary for testing
-nodes = [4, 8] # temporary for testing
+bandwidths = ['', '1Gbs'] # temporary for testing
+nodes = [4, 8, 16] # temporary for testing
 replicates_number = 1
 
 command_4_nodes = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 4_nodes -c " + path_to_config_files + "exp_4_nodes.config"
