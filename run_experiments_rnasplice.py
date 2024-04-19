@@ -94,6 +94,23 @@ def run_tc_config(bandwidth):
      'hu-worker-c29', 'hu-worker-c30', 'hu-worker-c31', 'hu-worker-c32', 'hu-worker-c33',
      'hu-worker-c34', 'hu-worker-c35', 'hu-worker-c36', 'hu-worker-c37', 'hu-worker-c38',
      'hu-worker-c39', 'hu-worker-c40', 'hu-worker-c41', 'hu-worker-c42', 'hu-worker-c43']
+
+    if not bandwidth:    
+        args = 'tcdel eno2np1 --all'
+        print(args)
+        try:
+            # Delete any existing configuration
+            result = subprocess.run(
+                ['ansible', 'all_nodes', '-i', inventory_path, '-m', module, '-a', args, '--become', '-u', 'root'],
+                check=True,  # Check for errors
+                text=True,  # Get output as text
+                capture_output=True  # Capture output
+            )
+            print(result)
+        except subprocess.CalledProcessError as e:
+            return e.stderr
+        return
+
     if (bandwidth is not None):
         inventory_path = '/home/rnaseq/rnasplice_exp/hosts'
         module = 'command'
