@@ -5,3 +5,6 @@
 *.log
 .nextflow*
 rnasplice_execution*
+
+# Ignore pngs
+*.png
