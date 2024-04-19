@@ -160,9 +160,9 @@ def remove_work_folder():
 ### START
 
 # NODES
-exp_4_nodes = ["worker-c24","worker-c25","worker-c26","worker-c27"]
-exp_8_nodes_TODO = ["worker-c24","worker-c25","worker-c26","worker-c27","worker-c28","worker-c34","worker-c35","worker-c36"]
-exp_16_nodes = ["worker-c23","worker-c24","worker-c25","worker-c26","worker-c27","worker-c28","worker-c29","worker-c30","worker-c34","worker-c35","worker-c36","worker-c37","worker-c38","worker-c39","worker-c40","worker-c41"]
+exp_4_nodes = ["hu-worker-c24","hu-worker-c25","hu-worker-c26","hu-worker-c27"]
+exp_8_nodes_TODO = ["hu-worker-c24","hu-worker-c25","hu-worker-c26","hu-worker-c27","hu-worker-c28","hu-worker-c23","hu-worker-c43","hu-worker-c40"]
+exp_16_nodes = ["hu-worker-c23","hu-worker-c24","hu-worker-c25","hu-worker-c26","hu-worker-c27","hu-worker-c28","hu-worker-c29","hu-worker-c30","hu-worker-c34","hu-worker-c35","hu-worker-c36","hu-worker-c37","hu-worker-c38","hu-worker-c39","hu-worker-c40","hu-worker-c41"]
 
 exp_4_nodes_addresses = ["10.0.0.24:9100","10.0.0.25:9100","10.0.0.26:9100","10.0.0.27:9100"]
 exp_8_nodes_addresses = ["10.0.0.24:9100","10.0.0.25:9100","10.0.0.26:9100","10.0.0.27:9100","10.0.0.28:9100","10.0.0.34:9100","10.0.0.35:9100","10.0.0.36:9100"]
