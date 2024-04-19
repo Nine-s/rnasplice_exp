@@ -1,18 +1,18 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: thirsty-lamport
+  name: furious-wiles
   namespace: default
-  labels: {app: nextflow, runName: thirsty-lamport}
+  labels: {app: nextflow, runName: furious-wiles}
 spec:
   restartPolicy: Never
   containers:
-  - name: thirsty-lamport
-    image: nextflow/nextflow:23.10.1
+  - name: furious-wiles
+    image: nextflow/nextflow:24.03.0-edge
     command: [/bin/bash, -c, source /etc/nextflow/init.sh; nextflow run Nine-s/rnasplice_generated_modified_reduced_/
-        -name thirsty-lamport -r 4_nodes]
+        -name furious-wiles -r 4_nodes]
     env:
-    - {name: NXF_WORK, value: /workspace/rnaseq/work}
+    - {name: NXF_WORK, value: /workspace/ninon/work}
     - {name: NXF_ASSETS, value: /workspace/projects}
     - {name: NXF_EXECUTOR, value: k8s}
     - {name: NXF_ANSI_LOG, value: 'false'}
@@ -25,4 +25,4 @@ spec:
   - name: vol-1
     persistentVolumeClaim: {claimName: nextflow-ninon}
   - name: vol-2
-    configMap: {name: nf-config-06602240}
+    configMap: {name: nf-config-96b2cc1a}
