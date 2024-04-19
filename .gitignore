@@ -1,0 +1,5 @@
+# Ignore nextlog logs
+.nextflow.log.*
+
+# Ignore other logs
+*.log
