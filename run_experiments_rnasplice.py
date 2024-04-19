@@ -6,17 +6,17 @@ from kubernetes import client, config, stream
 from kubernetes.stream import stream
 
 # K8S config
-path_to_work_folder = "/data/ninon/" #TODO : add "/workspace" ??
-path_to_trace_files = "/data/ninon/" #TODO : add "/workspace" ??
-path_to_trace_folders = "/data/ninon/rnasplice_experiments_traces/"
-path_to_nextflow = "nextflow"
+path_to_work_folder = "/home/rnaseq/" #TODO : add "/workspace" ??
+path_to_trace_files = "/home/rnaseq/" #TODO : add "/workspace" ??
+path_to_trace_folders = "/home/rnaseq/rnasplice_experiments_traces/"
+path_to_nextflow = "/home/rnaseq/nextflow"
 name_of_volume = "nextflow-ninon"  
 namespace = "default"  
 helper_pod = "ubuntu-pod"
 helper_container = "ubuntu-pod"
 
 # Load the Kubernetes configuration
-config.load_kube_config('/home/ninon/.kube/config') #TODO: do we need this?
+config.load_kube_config('/home/rnaseq/kubeconfig') #TODO: do we need this?
 
 # Create an API client
 api = client.CoreV1Api()
@@ -48,9 +48,10 @@ def run_tc_config(bandwidth, list_of_nodes): # TODO
 def run_one_experiment(command):
     current_datetime = datetime.datetime.now()
     start_time = current_datetime.strftime("%d-%m-%y %H:%M")
-    command_to_run = path_to_nextflow + " kuberun " + command + " -v " + name_of_volume
-    result = subprocess.run(command_to_run, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True) 
+    print(command)
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True) 
     output_lines = result.stdout.splitlines()
+    print(output_lines)
     print('Searching for pod name...')
     for line in output_lines:
         if "Pod started:" in line:
@@ -125,7 +126,7 @@ exp_16_nodes_addresses = ["10.0.0.23:9100","10.0.0.24:9100","10.0.0.25:9100","10
 
 # PATHS
 logname = "rnasplice_execution.log"
-path_to_config_files = "/data/ninon/rnasplice_experiments_configs/" 
+path_to_config_files = "/home/rnaseq/rnasplice_exp/" 
 
 # EXP PARAMETERS
 #bandwidths = [None, 1, 2, 10] #in Mb # TODO
@@ -136,19 +137,19 @@ bandwidths = [None] # temporary for testing
 nodes = [4, 8] # temporary for testing
 replicates_number = 1
 
-command_4_nodes = "nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 4_nodes -c " + path_to_config_files + "exp_4_nodes.config"
-command_8_nodes = "nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 8_nodes -c " + path_to_config_files + "exp_8_nodes.config"
-command_16_nodes = "nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes.config"
+command_4_nodes = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 4_nodes -c " + path_to_config_files + "exp_4_nodes.config"
+command_8_nodes = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 8_nodes -c " + path_to_config_files + "exp_8_nodes.config"
+command_16_nodes = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes.config"
 daws_rewritten_commandline = [command_4_nodes, command_8_nodes, command_16_nodes]
 
-command_baseline_4_nodes = "nextflow kuberun Nine-s/rnasplice_TODO -r master -c " + path_to_config_files + "baseline_4_nodes.config"
-command_baseline_8_nodes = "nextflow kuberun Nine-s/rnasplice_TODO -r master -c " + path_to_config_files + "baseline_8_nodes.config"
-command_baseline_16_nodes = "nextflow kuberun Nine-s/rnasplice_TODO -r master -c " + path_to_config_files + "baseline_16_nodes.config"
+command_baseline_4_nodes = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_TODO -r master -c " + path_to_config_files + "baseline_4_nodes.config"
+command_baseline_8_nodes = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_TODO -r master -c " + path_to_config_files + "baseline_8_nodes.config"
+command_baseline_16_nodes = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_TODO -r master -c " + path_to_config_files + "baseline_16_nodes.config"
 daws_baseline_commandline = [command_baseline_4_nodes, command_baseline_8_nodes, command_baseline_16_nodes]
 
-command_16_nodes_split_8 = "nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_8.config"
-command_8_nodes_split_2 = "nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 8_nodes -c " + path_to_config_files + "exp_8_nodes_split_2.config"
-command_16_nodes_split_2 = "nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_2.config"
+command_16_nodes_split_8 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_8.config"
+command_8_nodes_split_2 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 8_nodes -c " + path_to_config_files + "exp_8_nodes_split_2.config"
+command_16_nodes_split_2 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_2.config"
 
 
 ### RUN THE EXPERIMENTS
