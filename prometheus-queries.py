@@ -79,7 +79,7 @@ KUBERNETES_QUERIES = {
     'total_bytes_transmitted_regular_network': 'rate(node_network_transmit_bytes_total{instance={{node}}, device="eno1np0"}[{{max_time}}h])',
     'total_bytes_received_regular_network': 'rate(node_network_receive_bytes_total{instance={{node}}, device="eno1np0"}[{{max_time}}h])',
     'total_bytes_transmitted_ceph_network': 'rate(node_network_transmit_bytes_total{instance={{node}}, device="eno2np1"}[{{max_time}}h])',
-    'total_bytes_received_ceph_network': 'rate(node_network_receive_bytes_total{instance={{node}}, device="eno2np1"})[{{max_time}}h])',
+    'total_bytes_received_ceph_network': 'rate(node_network_receive_bytes_total{instance={{node}}, device="eno2np1"}[{{max_time}}h])',
 }
 
 CEPH_QUERIES = {"cluster_total_bytes_written": "sum(irate(ceph_osd_op_w_in_bytes[1m]))",
@@ -133,9 +133,15 @@ if __name__ == "__main__":
         for node in LIST_OF_NODES:
             filled_query = query.replace('{{node}}', f'"{node}"').replace('{{max_time}}', '1')
             print(f"Querying {title} for node {node}. The query is: {filled_query}")
-            data = query_prometheus(prometheus_url, filled_query, start, end, step)
-            timestamps, values = parse_timeseries(data)
-            # TODO: Plot the data but don't block the script
+            try:
+                data = query_prometheus(prometheus_url, filled_query, start, end, step)
+                timestamps, values = parse_timeseries(data)
+            except:
+                print(f"Failed to query {title} for node {node}.")
+                # Stop the port forwarding and exit
+                port_forwarding_process.terminate()
+                port_forwarding_process.wait()
+                exit(1)
 
             plot_data(timestamps, values, title=f"{title} for node {node}", xlabel="Time", ylabel=title)
     
