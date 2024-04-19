@@ -3,3 +3,5 @@
 
 # Ignore other logs
 *.log
+.nextflow*
+rnasplice_execution*

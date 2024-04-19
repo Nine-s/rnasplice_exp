@@ -87,13 +87,66 @@ def execute_command_in_container(input_command):
         print(f"An error occurred while executing the command: {e}")
 
 
-def run_tc_config(bandwidth, list_of_nodes): # TODO
+
+def run_tc_config(bandwidth):
+    # Setting the bandwidth for all nodes except the metadata servers
+    list_of_nodes = ['hu-worker-c24', 'hu-worker-c25', 'hu-worker-c26', 'hu-worker-c27', 'hu-worker-c28',
+     'hu-worker-c29', 'hu-worker-c30', 'hu-worker-c31', 'hu-worker-c32', 'hu-worker-c33',
+     'hu-worker-c34', 'hu-worker-c35', 'hu-worker-c36', 'hu-worker-c37', 'hu-worker-c38',
+     'hu-worker-c39', 'hu-worker-c40', 'hu-worker-c41', 'hu-worker-c42', 'hu-worker-c43']
     if (bandwidth is not None):
-        my_command = "start_tc_config_command" + str(bandwidth) + "end_tc_config_command"
-        #runCommand(my_command) #TODO : vasilis: take care of the command
-        #check_bandwidth(bandwidth) #???
-    else:
-        return
+        inventory_path = '/home/rnaseq/rnasplice_exp/hosts'
+        module = 'command'
+
+        # Create an inventory file
+        with open(inventory_path, 'w') as file:
+            file.write('[all_nodes]\n')
+            for node in list_of_nodes:
+                file.write(f"{node}\n")
+
+        args = 'tcdel eno2np1 --all'
+        print(args)
+        try:
+            # Delete any existing configuration
+            result = subprocess.run(
+                ['ansible', 'all_nodes', '-i', inventory_path, '-m', module, '-a', args, '--become', '-u', 'root'],
+                check=True,  # Check for errors
+                text=True,  # Get output as text
+                capture_output=True  # Capture output
+            )
+            print(result)
+        except subprocess.CalledProcessError as e:
+            return e.stderr
+
+        # Set limit on outgoing
+        args = 'tcset eno2np1 --direction outgoing --rate ' + bandwidth
+        print(args)
+        try:
+            # Delete any existing configuration
+            result = subprocess.run(
+                ['ansible', 'all_nodes', '-i', inventory_path, '-m', module, '-a', args, '--become', '-u', 'root'],
+                check=True,  # Check for errors
+                text=True,  # Get output as text
+                capture_output=True  # Capture output
+            )
+            print(result)
+        except subprocess.CalledProcessError as e:
+            return e.stderr
+
+        # Set limit on outgoing
+        args = 'tcset eno2np1 --direction incoming --rate ' + bandwidth
+        print(args)
+        try:
+            # Delete any existing configuration
+            result = subprocess.run(
+                ['ansible', 'all_nodes', '-i', inventory_path, '-m', module, '-a', args, '--become', '-u', 'root'],
+                check=True,  # Check for errors
+                text=True,  # Get output as text
+                capture_output=True  # Capture output
+            )
+            print(result)
+        except subprocess.CalledProcessError as e:
+            return e.stderr
 
 def run_one_experiment(command):
     current_datetime = datetime.datetime.now()
@@ -160,9 +213,9 @@ def remove_work_folder():
 ### START
 
 # NODES
-exp_4_nodes = ["worker-c24","worker-c25","worker-c26","worker-c27"]
-exp_8_nodes_TODO = ["worker-c24","worker-c25","worker-c26","worker-c27","worker-c28","worker-c34","worker-c35","worker-c36"]
-exp_16_nodes = ["worker-c23","worker-c24","worker-c25","worker-c26","worker-c27","worker-c28","worker-c29","worker-c30","worker-c34","worker-c35","worker-c36","worker-c37","worker-c38","worker-c39","worker-c40","worker-c41"]
+exp_4_nodes = ["hu-worker-c24","hu-worker-c25","hu-worker-c26","hu-worker-c27"]
+exp_8_nodes_TODO = ["hu-worker-c24","hu-worker-c25","hu-worker-c26","hu-worker-c27","hu-worker-c28","hu-worker-c23","hu-worker-c43","hu-worker-c40"]
+exp_16_nodes = ["hu-worker-c23","hu-worker-c24","hu-worker-c25","hu-worker-c26","hu-worker-c27","hu-worker-c28","hu-worker-c29","hu-worker-c30","hu-worker-c34","hu-worker-c35","hu-worker-c36","hu-worker-c37","hu-worker-c38","hu-worker-c39","hu-worker-c40","hu-worker-c41"]
 
 exp_4_nodes_addresses = ["10.0.0.24:9100","10.0.0.25:9100","10.0.0.26:9100","10.0.0.27:9100"]
 exp_8_nodes_addresses = ["10.0.0.24:9100","10.0.0.25:9100","10.0.0.26:9100","10.0.0.27:9100","10.0.0.28:9100","10.0.0.34:9100","10.0.0.35:9100","10.0.0.36:9100"]
@@ -205,7 +258,7 @@ command_16_nodes_split_8 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_gener
 create_log_file()
 
 for i in range(len(bandwidths)):
-    run_tc_config(bandwidths[i], list_of_nodes=exp_16_nodes_addresses)
+    run_tc_config(bandwidths[i])
     for j in range(len(nodes)):
         # run rewriten daw
         for replicate in range(replicates_number):
