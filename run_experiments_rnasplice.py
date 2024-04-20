@@ -256,9 +256,9 @@ command_8_nodes = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modi
 command_16_nodes = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes.config"
 daws_rewritten_commandline = [command_4_nodes, command_8_nodes, command_16_nodes]
 
-command_baseline_4_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_workflow_reduced.git -r master -c " + path_to_config_files + "baseline_4_nodes.config"
-command_baseline_8_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_workflow_reduced.git -r master -c " + path_to_config_files + "baseline_8_nodes.config"
-command_baseline_16_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_workflow_reduced.git -r master -c " + path_to_config_files + "baseline_16_nodes.config"
+command_baseline_4_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_workflow_reduced -r master -c " + path_to_config_files + "baseline_4_nodes.config"
+command_baseline_8_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_workflow_reduced -r master -c " + path_to_config_files + "baseline_8_nodes.config"
+command_baseline_16_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_workflow_reduced -r master -c " + path_to_config_files + "baseline_16_nodes.config"
 daws_baseline_commandline = [command_baseline_4_nodes, command_baseline_8_nodes, command_baseline_16_nodes]
 
 #TOFIX
