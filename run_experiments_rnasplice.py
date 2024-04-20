@@ -167,7 +167,7 @@ def run_tc_config(bandwidth):
 
 def run_one_experiment(command):
     current_datetime = datetime.datetime.now()
-    start_time = current_datetime.strftime("%d-%m-%y %H:%M")
+    start_time = current_datetime.strftime("%d-%m-%y_%H-%M")
     print(command)
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True) 
     output_lines = result.stdout.splitlines()
@@ -220,7 +220,7 @@ def check_if_daw_is_done():
     return True
 
 def move_trace_files(bandwidth, nodes, daw_type, replicate):
-    path_to_right_trace_folder = path_to_trace_folders + "rnasplice_exp_traces" + "/" + bandwidth  + "/" + nodes  + "/" + daw_type  + "/" + replicate  + "/" 
+    path_to_right_trace_folder = path_to_trace_folders + "rnasplice_exp_traces" + "/" + str(bandwidth)  + "/" + str(nodes)  + "/" + str(daw_type)  + "/" + str(replicate)  + "/" 
     create_folder_in_pod(namespace, helper_pod, "" , path_to_right_trace_folder)
     move_files_in_pod(namespace, helper_pod, path_to_trace_files + "_*", path_to_right_trace_folder)
 
