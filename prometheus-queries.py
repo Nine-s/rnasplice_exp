@@ -70,72 +70,73 @@ def plot_data(timestamps, values, title='', xlabel='', ylabel=''):
     # Save the plot
     plt.savefig(f"{title.replace(' ', '_')}.png")
 
-
 VECTOR_QUERIES = {
-    'non_idle_cpu_time': '100 - avg(rate(node_cpu_seconds_total{instance={{node}}, mode="idle"}[{{max_time}}m]) * 100)',
-    'used_ram': '(node_memory_MemTotal_bytes{instance={{node}}} - node_memory_MemAvailable_bytes{instance={{node}}})',
-    'used_disk_space': '(node_filesystem_size_bytes{instance={{node}}, mountpoint="/var"} - node_filesystem_free_bytes{instance={{node}}, mountpoint="/var"})', #TODO check if it works when the query range is given externally
+    'non_idle_cpu_time_percentage': '100 - avg(rate(node_cpu_seconds_total{instance={{node}}, mode="idle"}[{{step}}]) * 100)', # DONE
+    'used_ram_gigabytes': '(node_memory_MemTotal_bytes{instance={{node}}} - node_memory_MemAvailable_bytes{instance={{node}}}) / 1024^3', # DONE
+    'used_disk_space': 'sum((node_filesystem_size_bytes{instance={{node}}} - node_filesystem_free_bytes{instance={{node}}}) / 1024^3)', # DONE
     'used_pvc_space': 'kubelet_volume_stats_used_bytes{persistentvolumeclaim="ninon-nextflow"}', # This fetches multiple graphs, need to get only one
-    'total_bytes_transmitted_regular_network': 'rate(node_network_transmit_bytes_total{instance={{node}}, device="eno1np0"}[{{max_time}}h])',
-    'total_bytes_received_regular_network': 'rate(node_network_receive_bytes_total{instance={{node}}, device="eno1np0"}[{{max_time}}h])',
-    'total_bytes_transmitted_ceph_network': 'rate(node_network_transmit_bytes_total{instance={{node}}, device="eno2np1"}[{{max_time}}h])',
-    'total_bytes_received_ceph_network': 'rate(node_network_receive_bytes_total{instance={{node}}, device="eno2np1"}[{{max_time}}h])',
+    'total_bytes_transmitted_regular_network': 'increase(node_network_transmit_bytes_total{instance={{node}}, device="eno1np0"}[{{step}}]) / 1024^3',
+    'total_bytes_received_regular_network': 'increase(node_network_receive_bytes_total{instance={{node}}, device="eno1np0"}[{{step}}]) / 1024^3',
+    'total_bytes_transmitted_ceph_network': 'increase(node_network_transmit_bytes_total{instance={{node}}, device="eno2np1"}[{{step}}]) / 1024^3',
+    'total_bytes_received_ceph_network': 'increase(node_network_receive_bytes_total{instance={{node}}, device="eno2np1"}[{{step}}]) / 1024^3',
+
 }
 
-GAUGE_QUERIES = {"cluster_total_bytes_written": "sum(irate(ceph_osd_op_w_in_bytes[1m]))",
-                "cluster_total_bytes_read": 'sum(irate(ceph_osd_op_r_in_bytes[1m]))',
-                "cluster_total_ops_written": "sum(irate(ceph_osd_op_w[1m]))",
-                "cluster_total_ops_read": "sum(irate(ceph_osd_op_r[1m]))",
-                }
-
+GAUGE_QUERIES = {
+    "total_write_operations": "sum(irate(ceph_osd_op_w[1m])) / 1024^3",
+    "total_read_operations": "sum(irate(ceph_osd_op_r[1m])) / 1024^3",
+    "total_written_bytes": "sum(irate(ceph_osd_op_w_in_bytes[1m]))/ 1024^3",
+    "total_read_bytes": "sum(irate(ceph_osd_op_r_out_bytes[1m])) / 1024^3",
+}
 
 LIST_OF_NODES = ["10.0.0.24:9100", "10.0.0.38:9100"]
 
-def generate_vector_queries(max_time_to_query):
+def generate_vector_queries(step):
     list_of_queries = []
     for query_name, query_template in VECTOR_QUERIES.items():
         for node in LIST_OF_NODES:
-            query = query_template.replace('{{node}}', f'"{node}"').replace('{{max_time}}', str(max_time_to_query))
+            query = query_template.replace('{{node}}', f'"{node}"').replace('{{step}}', step)
             list_of_queries.append(query)
 
     return list_of_queries
 
-def generate_vector_queries(max_time_to_query):
+def generate_gauge_queries(step):
     list_of_queries = []
     for query_name, query_template in GAUGE_QUERIES.items():
-        query = query_template.replace('{{max_time}}', str(max_time_to_query))
+        query = query_template.replace('{{step}}', step)
         list_of_queries.append(query)
 
     return list_of_queries
 
 if __name__ == "__main__":
-    vector_queries_list = generate_vector_queries(1)
-    for query in vector_queries_list:
-        print(query)
-
-    for query in generate_vector_queries(1):
-        print(query)
-
     namespace = "monitoring"
     prometheus_pod = find_prometheus_pod(namespace)
     port_forwarding_process = start_port_forwarding(namespace, prometheus_pod, 9090, 9090)
     prometheus_url = "http://localhost:9090"
 
-    example_query = vector_queries_list[0]
+    # Generate example datetimes to query (2 hours duration yesterday)
+    # starts yesterday
+    start = datetime.datetime.now() - datetime.timedelta(days=1)
+    # lasts 2 hours
+    end = start + datetime.timedelta(hours=2)
+    step = '1m'
 
-    # Query Prometheus
-    start = datetime.datetime.now() - datetime.timedelta(hours=1)
-    end = datetime.datetime.now()
-    step = 30
-    data = query_prometheus(prometheus_url, query, start, end, step)
+    # # Query Prometheus right now
+    # start = datetime.datetime.now() - datetime.timedelta(hours=1)
+    # end = datetime.datetime.now()
+    # step = 30
+    # data = query_prometheus(prometheus_url, query, start, end, step)
 
     for title, query in VECTOR_QUERIES.items():
         for node in LIST_OF_NODES:
-            filled_query = query.replace('{{node}}', f'"{node}"').replace('{{max_time}}', '1')
+            filled_query = query.replace('{{node}}', f'"{node}"').replace('{{step}}', step)
             print(f"Querying {title} for node {node}. The query is: {filled_query}")
             try:
                 data = query_prometheus(prometheus_url, filled_query, start, end, step)
-                timestamps, values = parse_timeseries(data)
+                # Save the plain json data to a file
+                with open(f"{title.replace(' ', '_')}.json", "w") as f:
+                    f.write(str(data))
+                    timestamps, values = parse_timeseries(data)
             except:
                 print(f"Failed to query {title} for node {node}.")
                 # Stop the port forwarding and exit
@@ -145,10 +146,21 @@ if __name__ == "__main__":
 
             plot_data(timestamps, values, title=f"{title} for node {node}", xlabel="Time", ylabel=title)
     
+    # Does CEPH require different numbers?
+    # starts yesterday
+    start = datetime.datetime.now() - datetime.timedelta(days=1)
+    # lasts 2 hours
+    end = start + datetime.timedelta(hours=2)
+    step = '500s' # Try a few steps here to check the difference
+    
     for title, query in GAUGE_QUERIES.items():
         print(f"Querying {title}. The query is: {query}")
         try:
             data = query_prometheus(prometheus_url, query, start, end, step)
+            # Save the plain json data to a file
+            with open(f"{title.replace(' ', '_')}.json", "w") as f:
+                f.write(str(data))
+            
             timestamps, values = parse_timeseries(data)
         except:
             print(f"Failed to query {title}.")
