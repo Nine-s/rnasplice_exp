@@ -247,7 +247,7 @@ path_to_config_files = "/home/rnaseq/rnasplice_exp/"
 #nodes = [4, 8, 16] # TODO
 #replicates_number = 2 # TODO
 
-bandwidths = ['', '1Gbs'] # temporary for testing
+bandwidths = ['']#, '1Gbs'] # temporary for testing
 nodes = [4, 8, 16] # temporary for testing
 replicates_number = 1
 
@@ -280,15 +280,15 @@ for i in range(len(bandwidths)):
         # run rewriten daw
         for replicate in range(replicates_number):
             start_time, end_time = run_one_experiment(daws_rewritten_commandline[j])
-            move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+1))
-            add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+1))
+            move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+2))
+            add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+2))
             remove_work_folder()
 
         # run baseline daw
         for replicate in range(replicates_number):
             start_time, end_time = run_one_experiment(daws_baseline_commandline[j])
-            move_trace_files(bandwidths[i], nodes[j], "baseline", replicate+1)
-            add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "baseline", str(replicate+1))
+            move_trace_files(bandwidths[i], nodes[j], "baseline", replicate+2)
+            add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "baseline", str(replicate+2))
             remove_work_folder()
 
         # run different splits for 16 nodes
@@ -296,20 +296,20 @@ for i in range(len(bandwidths)):
             for replicate in range(replicates_number):
                 start_time, end_time = run_one_experiment(command_16_nodes_split_8)
 
-                move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+1))
-                add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+1))
+                move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+2))
+                add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+2))
                 remove_work_folder()
             
             for replicate in range(replicates_number):
                 start_time, end_time = run_one_experiment(command_16_nodes_split_4)
 
-                move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+1))
-                add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+1))
+                move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+2))
+                add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+2))
                 remove_work_folder()
 
             for replicate in range(replicates_number):
                 start_time, end_time = run_one_experiment(command_16_nodes_split_2)
 
-                move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+1))
-                add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+1))
+                move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+2))
+                add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+2))
                 remove_work_folder()
