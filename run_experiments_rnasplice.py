@@ -5,18 +5,21 @@ import subprocess
 from kubernetes import client, config, stream
 from kubernetes.stream import stream
 
+# PVC paths
+my_pvc_path = "/data/rnaseq/"
+path_to_work_folder = "/data/rnaseq/" 
+path_to_trace_files = "/data/rnaseq/" 
+path_to_trace_folders = "/data/rnaseq/rnasplice_experiments_traces/"
+
 # K8S config
-path_to_work_folder = "/home/rnaseq/" #TODO : add "/workspace" ??
-path_to_trace_files = "/home/rnaseq/" #TODO : add "/workspace" ??
-path_to_trace_folders = "/home/rnaseq/rnasplice_experiments_traces/"
 path_to_nextflow = "/home/rnaseq/nextflow"
 name_of_volume = "nextflow-ninon"  
-namespace = "default"  
+namespace = "default"
 helper_pod = "ubuntu-pod"
 helper_container = "ubuntu-pod"
 
 # Load the Kubernetes configuration
-config.load_kube_config('/home/rnaseq/kubeconfig') #TODO: do we need this?
+config.load_kube_config('/home/rnaseq/kubeconfig')
 
 # Create an API client
 api = client.CoreV1Api()
@@ -25,6 +28,53 @@ def check_pod_status(pod_name):
     pod = api.read_namespaced_pod_status(pod_name, namespace)
     return pod.status.phase
 
+def move_files_in_pod(namespace, pod_name, src, dest):
+
+    # Command to be executed in the pod
+    cmd = ['sh', '-c', f'mv {src} {dest}']
+
+    try:
+        # Connecting to the pod and executing the command
+        resp = stream(api.connect_get_namespaced_pod_exec, pod_name, namespace,
+                      command=cmd, stderr=True, stdin=False,
+                      stdout=True, tty=False)
+        print("Files moved successfully:")
+        print(resp)
+    except Exception as e:
+        print("Failed to move files:")
+        print(str(e))
+
+def delete_work_folder_in_pod(namespace, pod_name, path_to_work_folder):
+
+    # Command to be executed in the pod
+    cmd = ['sh', '-c', f'rm -r {path_to_work_folder}work']
+
+    try:
+        # Connecting to the pod and executing the command
+        resp = stream(api.connect_get_namespaced_pod_exec, pod_name, namespace,
+                      command=cmd, stderr=True, stdin=False,
+                      stdout=True, tty=False)
+        print("Files moved successfully:")
+        print(resp)
+    except Exception as e:
+        print("Failed to move files:")
+        print(str(e))
+
+def create_folder_in_pod(namespace, pod_name, path, dirname):
+
+    # Command to be executed in the pod
+    cmd = ['sh', '-c', f'mkdir -p {path}{dirname}']
+
+    try:
+        # Connecting to the pod and executing the command
+        resp = stream(api.connect_get_namespaced_pod_exec, pod_name, namespace,
+                      command=cmd, stderr=True, stdin=False,
+                      stdout=True, tty=False)
+        print("Files moved successfully:")
+        print(resp)
+    except Exception as e:
+        print("Failed to move files:")
+        print(str(e))
 
 def execute_command_in_container(input_command):
     try:
@@ -37,17 +87,87 @@ def execute_command_in_container(input_command):
         print(f"An error occurred while executing the command: {e}")
 
 
-def run_tc_config(bandwidth, list_of_nodes): # TODO
-    if (bandwidth is not None):
-        my_command = "start_tc_config_command" + str(bandwidth) + "end_tc_config_command"
-        #runCommand(my_command) #TODO : vasilis: take care of the command
-        #check_bandwidth(bandwidth) #???
-    else:
+
+def run_tc_config(bandwidth):
+    # Setting the bandwidth for all nodes except the metadata servers
+    list_of_nodes = ['hu-worker-c24', 'hu-worker-c25', 'hu-worker-c26', 'hu-worker-c27', 'hu-worker-c28',
+     'hu-worker-c29', 'hu-worker-c30', 'hu-worker-c31', 'hu-worker-c32', 'hu-worker-c33',
+     'hu-worker-c34', 'hu-worker-c35', 'hu-worker-c36', 'hu-worker-c37', 'hu-worker-c38',
+     'hu-worker-c39', 'hu-worker-c40', 'hu-worker-c41', 'hu-worker-c42', 'hu-worker-c43']
+    inventory_path = '/home/rnaseq/rnasplice_exp/hosts'
+    module = 'command'
+
+    # Create an inventory file
+    with open(inventory_path, 'w') as file:
+        file.write('[all_nodes]\n')
+        for node in list_of_nodes:
+            file.write(f"{node}\n")
+
+
+    if not bandwidth:    
+        args = 'tcdel eno2np1 --all'
+        print(args)
+        try:
+            # Delete any existing configuration
+            result = subprocess.run(
+                ['ansible', 'all_nodes', '-i', inventory_path, '-m', module, '-a', args, '--become', '-u', 'root'],
+                check=True,  # Check for errors
+                text=True,  # Get output as text
+                capture_output=True  # Capture output
+            )
+            print(result)
+        except subprocess.CalledProcessError as e:
+            return e.stderr
         return
+
+    if (bandwidth is not None):
+        args = 'tcdel eno2np1 --all'
+        print(args)
+        try:
+            # Delete any existing configuration
+            result = subprocess.run(
+                ['ansible', 'all_nodes', '-i', inventory_path, '-m', module, '-a', args, '--become', '-u', 'root'],
+                check=True,  # Check for errors
+                text=True,  # Get output as text
+                capture_output=True  # Capture output
+            )
+            print(result)
+        except subprocess.CalledProcessError as e:
+            return e.stderr
+
+        # Set limit on outgoing
+        args = 'tcset eno2np1 --direction outgoing --rate ' + bandwidth
+        print(args)
+        try:
+            # Delete any existing configuration
+            result = subprocess.run(
+                ['ansible', 'all_nodes', '-i', inventory_path, '-m', module, '-a', args, '--become', '-u', 'root'],
+                check=True,  # Check for errors
+                text=True,  # Get output as text
+                capture_output=True  # Capture output
+            )
+            print(result)
+        except subprocess.CalledProcessError as e:
+            return e.stderr
+
+        # Set limit on outgoing
+        args = 'tcset eno2np1 --direction incoming --rate ' + bandwidth
+        print(args)
+        try:
+            # Delete any existing configuration
+            result = subprocess.run(
+                ['ansible', 'all_nodes', '-i', inventory_path, '-m', module, '-a', args, '--become', '-u', 'root'],
+                check=True,  # Check for errors
+                text=True,  # Get output as text
+                capture_output=True  # Capture output
+            )
+            print(result)
+        except subprocess.CalledProcessError as e:
+            return e.stderr
 
 def run_one_experiment(command):
     current_datetime = datetime.datetime.now()
-    start_time = current_datetime.strftime("%d-%m-%y %H:%M")
+    start_time = current_datetime.strftime("%d-%m-%y_%H-%M")
     print(command)
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True) 
     output_lines = result.stdout.splitlines()
@@ -93,31 +213,26 @@ def create_log_file():
 
 def add_data_to_log(start_time, end_time, bandwidth, node, exp, replicate):
     with open(logname, "a") as log:
-        log.write(start_time + "\t" + end_time + "\t" + bandwidth + "\t" + node + "\t" + exp + "\t" + replicate + "\n")
+        log.write(str(start_time) + "\t" + str(end_time) + "\t" + str(bandwidth) + "\t" + str(node) + "\t" + str(exp) + "\t" + str(replicate) + "\n")
     return
 
 def check_if_daw_is_done():
     return True
 
 def move_trace_files(bandwidth, nodes, daw_type, replicate):
-    subprocess.run("mkdir -p " + path_to_trace_folders)
-    subprocess.run("mkdir -p " + path_to_trace_folders + bandwidth)
-    subprocess.run("mkdir -p " + path_to_trace_folders + bandwidth + "/" + nodes) 
-    subprocess.run("mkdir -p " + path_to_trace_folders + bandwidth + "/" + nodes + "/" + daw_type)
-    subprocess.run("mkdir -p " + path_to_trace_folders + bandwidth + "/" + nodes + "/" + daw_type + "/" + replicate ) 
-    path_to_right_trace_folder = path_to_trace_folders + "/" + bandwidth  + "/" + nodes  + "/" + daw_type  + "/" + replicate  + "/" 
-    subprocess.run("mv " + path_to_trace_files + "/_* " + path_to_right_trace_folder) 
+    path_to_right_trace_folder = path_to_trace_folders + "rnasplice_exp_traces" + "/" + str(bandwidth)  + "/" + str(nodes)  + "/" + str(daw_type)  + "/" + str(replicate)  + "/" 
+    create_folder_in_pod(namespace, helper_pod, "" , path_to_right_trace_folder)
+    move_files_in_pod(namespace, helper_pod, path_to_trace_files + "_*", path_to_right_trace_folder)
 
 def remove_work_folder(): 
-    subprocess.run("rm -r " + path_to_work_folder + "work")
-
+    delete_work_folder_in_pod(namespace, helper_pod, path_to_work_folder)
 
 ### START
 
 # NODES
-exp_4_nodes = ["worker-c24","worker-c25","worker-c26","worker-c27"]
-exp_8_nodes_TODO = ["worker-c24","worker-c25","worker-c26","worker-c27","worker-c28","worker-c34","worker-c35","worker-c36"]
-exp_16_nodes = ["worker-c23","worker-c24","worker-c25","worker-c26","worker-c27","worker-c28","worker-c29","worker-c30","worker-c34","worker-c35","worker-c36","worker-c37","worker-c38","worker-c39","worker-c40","worker-c41"]
+exp_4_nodes = ["hu-worker-c24","hu-worker-c25","hu-worker-c26","hu-worker-c27"]
+exp_8_nodes_TODO = ["hu-worker-c24","hu-worker-c25","hu-worker-c26","hu-worker-c27","hu-worker-c28","hu-worker-c23","hu-worker-c43","hu-worker-c40"]
+exp_16_nodes = ["hu-worker-c23","hu-worker-c24","hu-worker-c25","hu-worker-c26","hu-worker-c27","hu-worker-c28","hu-worker-c29","hu-worker-c30","hu-worker-c34","hu-worker-c35","hu-worker-c36","hu-worker-c37","hu-worker-c38","hu-worker-c39","hu-worker-c40","hu-worker-c41"]
 
 exp_4_nodes_addresses = ["10.0.0.24:9100","10.0.0.25:9100","10.0.0.26:9100","10.0.0.27:9100"]
 exp_8_nodes_addresses = ["10.0.0.24:9100","10.0.0.25:9100","10.0.0.26:9100","10.0.0.27:9100","10.0.0.28:9100","10.0.0.34:9100","10.0.0.35:9100","10.0.0.36:9100"]
@@ -132,8 +247,8 @@ path_to_config_files = "/home/rnaseq/rnasplice_exp/"
 #nodes = [4, 8, 16] # TODO
 #replicates_number = 2 # TODO
 
-bandwidths = [None] # temporary for testing
-nodes = [4, 8] # temporary for testing
+bandwidths = ['', '1Gbs'] # temporary for testing
+nodes = [4, 8, 16] # temporary for testing
 replicates_number = 1
 
 command_4_nodes = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 4_nodes -c " + path_to_config_files + "exp_4_nodes.config"
@@ -141,57 +256,60 @@ command_8_nodes = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modi
 command_16_nodes = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes.config"
 daws_rewritten_commandline = [command_4_nodes, command_8_nodes, command_16_nodes]
 
-command_baseline_4_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_workflow_reduced.git -r master -c " + path_to_config_files + "baseline_4_nodes.config"
-command_baseline_8_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_workflow_reduced.git -r master -c " + path_to_config_files + "baseline_8_nodes.config"
-command_baseline_16_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_workflow_reduced.git -r master -c " + path_to_config_files + "baseline_16_nodes.config"
+command_baseline_4_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_workflow_reduced -r master -c " + path_to_config_files + "baseline_4_nodes.config"
+command_baseline_8_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_workflow_reduced -r master -c " + path_to_config_files + "baseline_8_nodes.config"
+command_baseline_16_nodes = "/home/rnaseq/nextflow kuberun Nine-s/generated_workflow_reduced -r master -c " + path_to_config_files + "baseline_16_nodes.config"
 daws_baseline_commandline = [command_baseline_4_nodes, command_baseline_8_nodes, command_baseline_16_nodes]
 
 #TOFIX
-command_16_nodes_split_8 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_8.config"
-command_8_nodes_split_2 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 8_nodes -c " + path_to_config_files + "exp_8_nodes_split_2.config"
+#command_8_nodes_split_2 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 8_nodes -c " + path_to_config_files + "exp_8_nodes_split_2.config"
 command_16_nodes_split_2 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_2.config"
 command_16_nodes_split_4 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_4.config"
+command_16_nodes_split_8 = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 16_nodes -c " + path_to_config_files + "exp_16_nodes_split_8.config"
+
+
+
 
 ### RUN THE EXPERIMENTS
 
 create_log_file()
 
 for i in range(len(bandwidths)):
-    run_tc_config(bandwidths[i], list_of_nodes=exp_16_nodes_addresses)
+    run_tc_config(bandwidths[i])
     for j in range(len(nodes)):
-        # run rewriten daw
-        for replicate in range(replicates_number):
-            start_time, end_time = run_one_experiment(daws_rewritten_commandline[j])
-            move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+1))
-            add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+1))
-            remove_work_folder()
+        #run rewriten daw
+        # for replicate in range(replicates_number):
+        #     start_time, end_time = run_one_experiment(daws_rewritten_commandline[j])
+        #     move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate))
+        #     add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate))
+        #     remove_work_folder()
 
         # run baseline daw
         for replicate in range(replicates_number):
             start_time, end_time = run_one_experiment(daws_baseline_commandline[j])
-            move_trace_files(bandwidths[i], nodes[j], "baseline", replicate+1)
-            add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "baseline", str(replicate+1))
+            move_trace_files(bandwidths[i], nodes[j], "baseline", replicate)
+            add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "baseline", str(replicate))
             remove_work_folder()
 
-        # # run split 2 for 8 nodes
+        # run different splits for 16 nodes
         # if(j == 2):
         #     for replicate in range(replicates_number):
         #         start_time, end_time = run_one_experiment(command_16_nodes_split_8)
 
-        #         move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+1))
-        #         add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+1))
+        #         move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate))
+        #         add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate))
         #         remove_work_folder()
             
         #     for replicate in range(replicates_number):
         #         start_time, end_time = run_one_experiment(command_16_nodes_split_4)
 
-        #         move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+1))
-        #         add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+1))
+        #         move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate))
+        #         add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate))
         #         remove_work_folder()
 
         #     for replicate in range(replicates_number):
         #         start_time, end_time = run_one_experiment(command_16_nodes_split_2)
 
-        #         move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate+1))
-        #         add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate+1))
+        #         move_trace_files(bandwidths[i], nodes[j], "rewritten", str(replicate))
+        #         add_data_to_log(start_time, end_time, str(bandwidths[i]), nodes[j], "rewritten", str(replicate))
         #         remove_work_folder()

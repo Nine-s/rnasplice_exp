@@ -5,4 +5,8 @@
 *.log
 
 # Ignore images generated on root folder
+.nextflow*
+rnasplice_execution*
+
+# Ignore pngs
 *.png
