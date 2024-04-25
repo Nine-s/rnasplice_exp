@@ -4,6 +4,7 @@ import time
 import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
+import json
 
 def find_prometheus_pod(namespace):
     cmd = f"kubectl get pods -n {namespace} --no-headers -o custom-columns=:metadata.name"
@@ -70,74 +71,96 @@ def plot_data(timestamps, values, title='', xlabel='', ylabel=''):
     # Save the plot
     plt.savefig(f"{title.replace(' ', '_')}.png")
 
+VECTOR_QUERIES = {
+    'non_idle_cpu_time_percentage': '100 - avg(rate(node_cpu_seconds_total{instance={{node}}, mode="idle"}[{{step}}]) * 100)', # DONE
+    'used_ram_gigabytes': '(node_memory_MemTotal_bytes{instance={{node}}} - node_memory_MemAvailable_bytes{instance={{node}}}) / 1024^3', # DONE
+    'used_disk_space_gigabytes': 'sum((node_filesystem_size_bytes{instance={{node}}} - node_filesystem_free_bytes{instance={{node}}}) / 1024^3)', # DONE
+    'used_pvc_space_gigabytes': 'kubelet_volume_stats_used_bytes{persistentvolumeclaim="ninon-nextflow"}', # This fetches multiple graphs, need to get only one
+    'total_bytes_transmitted_regular_network_megabytes': 'increase(node_network_transmit_bytes_total{instance={{node}}, device="eno1np0"}[{{step}}]) / 1024^2',
+    'total_bytes_received_regular_network_megabytes': 'increase(node_network_receive_bytes_total{instance={{node}}, device="eno1np0"}[{{step}}]) / 1024^2',
+    'total_bytes_transmitted_ceph_network_megabytes': 'increase(node_network_transmit_bytes_total{instance={{node}}, device="eno2np1"}[{{step}}]) / 1024^2',
+    'total_bytes_received_ceph_network_megabytes': 'increase(node_network_receive_bytes_total{instance={{node}}, device="eno2np1"}[{{step}}]) / 1024^2',
 
-KUBERNETES_QUERIES = {
-    'non_idle_cpu_time': '1 - avg(rate(node_cpu_seconds_total{instance={{node}}, mode="idle"}[{{max_time}}m]))',
-    'used_ram': '(node_memory_MemTotal_bytes{instance={{node}}} - node_memory_MemAvailable_bytes{instance={{node}}})',
-    'used_disk_space': '(node_filesystem_size_bytes{instance={{node}}, mountpoint="/var"} - node_filesystem_free_bytes{instance={{node}}, mountpoint="/var"})', #TODO check if it works when the query range is given externally
-    'used_pvc_space': 'kubelet_volume_stats_used_bytes{persistentvolumeclaim="ninon-nextflow"}', # This fetches multiple graphs, need to get only one
-    'total_bytes_transmitted_regular_network': 'rate(node_network_transmit_bytes_total{instance={{node}}, device="eno1np0"}[{{max_time}}h])',
-    'total_bytes_received_regular_network': 'rate(node_network_receive_bytes_total{instance={{node}}, device="eno1np0"}[{{max_time}}h])',
-    'total_bytes_transmitted_ceph_network': 'rate(node_network_transmit_bytes_total{instance={{node}}, device="eno2np1"}[{{max_time}}h])',
-    'total_bytes_received_ceph_network': 'rate(node_network_receive_bytes_total{instance={{node}}, device="eno2np1"})[{{max_time}}h])',
 }
 
-CEPH_QUERIES = {"cluster_total_bytes_written": "sum(irate(ceph_osd_op_w_in_bytes[1m]))",
-                "cluster_total_bytes_read": 'sum(irate(ceph_osd_op_r_in_bytes[1m]))',
-                "cluster_total_ops_written": "sum(irate(ceph_osd_op_w[1m]))",
-                "cluster_total_ops_read": "sum(irate(ceph_osd_op_r[1m]))",
-                }
+GAUGE_QUERIES = {
+    "total_write_operations_throughput": "sum(irate(ceph_osd_op_w[5m]))",
+    "total_read_operations_throughput": "sum(irate(ceph_osd_op_r[5m]))",
+    "total_written_bytes_throughput": "sum(irate(ceph_osd_op_w_in_bytes[5m]))",
+    "total_read_bytes_throughput": "sum(irate(ceph_osd_op_r_out_bytes[5m]))",
 
+    "total_write_operations_last_hour": "sum(increase(ceph_osd_op_w[1h]))",
+    "total_read_operations_last_hour": "sum(increase(ceph_osd_op_r[1h]))",
+    "total_written_bytes_last_hour": "sum(increase(ceph_osd_op_w_in_bytes[1h]))",
+    "total_read_bytes_last_hour": "sum(increase(ceph_osd_op_r_out_bytes[1h]))",
+
+}
 
 LIST_OF_NODES = ["10.0.0.24:9100", "10.0.0.38:9100"]
 
-def generate_kubernetes_queries(max_time_to_query):
-    list_of_queries = []
-    for query_name, query_template in KUBERNETES_QUERIES.items():
-        for node in LIST_OF_NODES:
-            query = query_template.replace('{{node}}', f'"{node}"').replace('{{max_time}}', str(max_time_to_query))
-            list_of_queries.append(query)
-
-    return list_of_queries
-
-def generate_ceph_queries(max_time_to_query):
-    list_of_queries = []
-    for query_name, query_template in CEPH_QUERIES.items():
-        query = query_template.replace('{{max_time}}', str(max_time_to_query))
-        list_of_queries.append(query)
-
-    return list_of_queries
 
 if __name__ == "__main__":
-    kubernetes_queries_list = generate_kubernetes_queries(1)
-    for query in kubernetes_queries_list:
-        print(query)
-
-    for query in generate_ceph_queries(1):
-        print(query)
-
     namespace = "monitoring"
     prometheus_pod = find_prometheus_pod(namespace)
     port_forwarding_process = start_port_forwarding(namespace, prometheus_pod, 9090, 9090)
     prometheus_url = "http://localhost:9090"
 
-    example_query = kubernetes_queries_list[0]
+    # Generate example datetimes to query (2 hours duration yesterday)
+    # starts yesterday
+    start = datetime.datetime.now() - datetime.timedelta(days=1)
+    # lasts 2 hours
+    end = start + datetime.timedelta(hours=2)
+    step = '1m'
 
-    # Query Prometheus
-    start = datetime.datetime.now() - datetime.timedelta(hours=1)
-    end = datetime.datetime.now()
-    step = 30
-    data = query_prometheus(prometheus_url, query, start, end, step)
+    # # Query Prometheus right now
+    # start = datetime.datetime.now() - datetime.timedelta(hours=1)
+    # end = datetime.datetime.now()
+    # step = 30
+    # data = query_prometheus(prometheus_url, query, start, end, step)
 
-    for title, query in KUBERNETES_QUERIES.items():
+    for title, query in VECTOR_QUERIES.items():
         for node in LIST_OF_NODES:
-            filled_query = query.replace('{{node}}', f'"{node}"').replace('{{max_time}}', '1')
+            filled_query = query.replace('{{node}}', f'"{node}"').replace('{{step}}', step)
             print(f"Querying {title} for node {node}. The query is: {filled_query}")
-            data = query_prometheus(prometheus_url, filled_query, start, end, step)
-            timestamps, values = parse_timeseries(data)
-            # TODO: Plot the data but don't block the script
+            try:
+                data = query_prometheus(prometheus_url, filled_query, start, end, step)
+                # Save the plain json data to a file
+                with open(f"{title.replace(' ', '_')}.json", "w") as f:
+                    json.dump(data, f)
+                    timestamps, values = parse_timeseries(data)
+            except:
+                print(f"Failed to query {title} for node {node}.")
+                # Stop the port forwarding and exit
+                port_forwarding_process.terminate()
+                port_forwarding_process.wait()
+                exit(1)
 
             plot_data(timestamps, values, title=f"{title} for node {node}", xlabel="Time", ylabel=title)
+    
+    # Does CEPH require different numbers?
+    # starts yesterday
+    start = datetime.datetime.now() - datetime.timedelta(days=1)
+    # lasts 2 hours
+    end = start + datetime.timedelta(hours=2)
+    step = '1m' # Try a few steps here to check the difference
+    
+    for title, query in GAUGE_QUERIES.items():
+        print(f"Querying {title}. The query is: {query}")
+        try:
+            data = query_prometheus(prometheus_url, query, start, end, step)
+            # Save the plain json data to a file
+            with open(f"{title.replace(' ', '_')}.json", "w") as f:
+                json.dump(data, f)
+            
+            timestamps, values = parse_timeseries(data)
+        except:
+            print(f"Failed to query {title}.")
+            # Stop the port forwarding and exit
+            port_forwarding_process.terminate()
+            port_forwarding_process.wait()
+            exit(1)
+
+        plot_data(timestamps, values, title=title, xlabel="Time", ylabel=title)
     
     # Stop port forwarding
     port_forwarding_process.terminate()
