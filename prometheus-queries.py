@@ -4,6 +4,7 @@ import time
 import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
+import json
 
 def find_prometheus_pod(namespace):
     cmd = f"kubectl get pods -n {namespace} --no-headers -o custom-columns=:metadata.name"
@@ -73,40 +74,30 @@ def plot_data(timestamps, values, title='', xlabel='', ylabel=''):
 VECTOR_QUERIES = {
     'non_idle_cpu_time_percentage': '100 - avg(rate(node_cpu_seconds_total{instance={{node}}, mode="idle"}[{{step}}]) * 100)', # DONE
     'used_ram_gigabytes': '(node_memory_MemTotal_bytes{instance={{node}}} - node_memory_MemAvailable_bytes{instance={{node}}}) / 1024^3', # DONE
-    'used_disk_space': 'sum((node_filesystem_size_bytes{instance={{node}}} - node_filesystem_free_bytes{instance={{node}}}) / 1024^3)', # DONE
-    'used_pvc_space': 'kubelet_volume_stats_used_bytes{persistentvolumeclaim="ninon-nextflow"}', # This fetches multiple graphs, need to get only one
-    'total_bytes_transmitted_regular_network': 'increase(node_network_transmit_bytes_total{instance={{node}}, device="eno1np0"}[{{step}}]) / 1024^3',
-    'total_bytes_received_regular_network': 'increase(node_network_receive_bytes_total{instance={{node}}, device="eno1np0"}[{{step}}]) / 1024^3',
-    'total_bytes_transmitted_ceph_network': 'increase(node_network_transmit_bytes_total{instance={{node}}, device="eno2np1"}[{{step}}]) / 1024^3',
-    'total_bytes_received_ceph_network': 'increase(node_network_receive_bytes_total{instance={{node}}, device="eno2np1"}[{{step}}]) / 1024^3',
+    'used_disk_space_gigabytes': 'sum((node_filesystem_size_bytes{instance={{node}}} - node_filesystem_free_bytes{instance={{node}}}) / 1024^3)', # DONE
+    'used_pvc_space_gigabytes': 'kubelet_volume_stats_used_bytes{persistentvolumeclaim="ninon-nextflow"}', # This fetches multiple graphs, need to get only one
+    'total_bytes_transmitted_regular_network_megabytes': 'increase(node_network_transmit_bytes_total{instance={{node}}, device="eno1np0"}[{{step}}]) / 1024^2',
+    'total_bytes_received_regular_network_megabytes': 'increase(node_network_receive_bytes_total{instance={{node}}, device="eno1np0"}[{{step}}]) / 1024^2',
+    'total_bytes_transmitted_ceph_network_megabytes': 'increase(node_network_transmit_bytes_total{instance={{node}}, device="eno2np1"}[{{step}}]) / 1024^2',
+    'total_bytes_received_ceph_network_megabytes': 'increase(node_network_receive_bytes_total{instance={{node}}, device="eno2np1"}[{{step}}]) / 1024^2',
 
 }
 
 GAUGE_QUERIES = {
-    "total_write_operations": "sum(irate(ceph_osd_op_w[1m])) / 1024^3",
-    "total_read_operations": "sum(irate(ceph_osd_op_r[1m])) / 1024^3",
-    "total_written_bytes": "sum(irate(ceph_osd_op_w_in_bytes[1m]))/ 1024^3",
-    "total_read_bytes": "sum(irate(ceph_osd_op_r_out_bytes[1m])) / 1024^3",
+    "total_write_operations_throughput": "sum(irate(ceph_osd_op_w[5m]))",
+    "total_read_operations_throughput": "sum(irate(ceph_osd_op_r[5m]))",
+    "total_written_bytes_throughput": "sum(irate(ceph_osd_op_w_in_bytes[5m]))",
+    "total_read_bytes_throughput": "sum(irate(ceph_osd_op_r_out_bytes[5m]))",
+
+    "total_write_operations_last_hour": "sum(increase(ceph_osd_op_w[1h]))",
+    "total_read_operations_last_hour": "sum(increase(ceph_osd_op_r[1h]))",
+    "total_written_bytes_last_hour": "sum(increase(ceph_osd_op_w_in_bytes[1h]))",
+    "total_read_bytes_last_hour": "sum(increase(ceph_osd_op_r_out_bytes[1h]))",
+
 }
 
 LIST_OF_NODES = ["10.0.0.24:9100", "10.0.0.38:9100"]
 
-def generate_vector_queries(step):
-    list_of_queries = []
-    for query_name, query_template in VECTOR_QUERIES.items():
-        for node in LIST_OF_NODES:
-            query = query_template.replace('{{node}}', f'"{node}"').replace('{{step}}', step)
-            list_of_queries.append(query)
-
-    return list_of_queries
-
-def generate_gauge_queries(step):
-    list_of_queries = []
-    for query_name, query_template in GAUGE_QUERIES.items():
-        query = query_template.replace('{{step}}', step)
-        list_of_queries.append(query)
-
-    return list_of_queries
 
 if __name__ == "__main__":
     namespace = "monitoring"
@@ -135,7 +126,7 @@ if __name__ == "__main__":
                 data = query_prometheus(prometheus_url, filled_query, start, end, step)
                 # Save the plain json data to a file
                 with open(f"{title.replace(' ', '_')}.json", "w") as f:
-                    f.write(str(data))
+                    json.dump(data, f)
                     timestamps, values = parse_timeseries(data)
             except:
                 print(f"Failed to query {title} for node {node}.")
@@ -151,7 +142,7 @@ if __name__ == "__main__":
     start = datetime.datetime.now() - datetime.timedelta(days=1)
     # lasts 2 hours
     end = start + datetime.timedelta(hours=2)
-    step = '500s' # Try a few steps here to check the difference
+    step = '1m' # Try a few steps here to check the difference
     
     for title, query in GAUGE_QUERIES.items():
         print(f"Querying {title}. The query is: {query}")
@@ -159,7 +150,7 @@ if __name__ == "__main__":
             data = query_prometheus(prometheus_url, query, start, end, step)
             # Save the plain json data to a file
             with open(f"{title.replace(' ', '_')}.json", "w") as f:
-                f.write(str(data))
+                json.dump(data, f)
             
             timestamps, values = parse_timeseries(data)
         except:
