@@ -244,7 +244,7 @@ command_split = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modifi
 command_rewritting_full = "/home/rnaseq/nextflow kuberun Nine-s/rnasplice_generated_modified_reduced_/ -r 8_nodes -c " + path_to_config_files + "exp_ninon_nodes.config" #TODO
 daws_commandline = [command_baseline, command_replace, command_threads, command_split, command_rewritting_full]
 
-experiments ="command_baseline", "command_replace", "command_threads", "command_split", "command_rewritting_full"
+experiments = ["command_baseline", "command_replace", "command_threads", "command_split", "command_rewritting_full"]
 
 ### RUN THE EXPERIMENTS
 
@@ -254,5 +254,5 @@ for j in range(len(daws_commandline)):
         for replicate in range(replicates_number):
             start_time, end_time = run_one_experiment(daws_commandline[j])
             move_trace_files(experiments, replicate)
-            add_data_to_log(start_time, end_time, experiments, str(replicate))
+            add_data_to_log(start_time, end_time, experiments[j], str(replicate))
             remove_work_folder()
