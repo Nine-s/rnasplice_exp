@@ -253,6 +253,6 @@ create_log_file()
 for j in range(len(daws_commandline)):
         for replicate in range(replicates_number):
             start_time, end_time = run_one_experiment(daws_commandline[j])
-            move_trace_files(experiments, replicate)
+            move_trace_files(experiments[j], replicate)
             add_data_to_log(start_time, end_time, experiments[j], str(replicate))
             remove_work_folder()
